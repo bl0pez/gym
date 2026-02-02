@@ -1,0 +1,12 @@
+node_modules
+.env
+dist
+build
+.next
+coverage
+logs
+out
+*.log
+*.tsbuildinfo
+*.env
+
