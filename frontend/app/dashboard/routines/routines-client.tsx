@@ -9,7 +9,6 @@ import {
   Pencil, 
   Trash2, 
   Dumbbell, 
-  Clock, 
   Weight,
   MoreVertical,
   Loader2,
@@ -20,6 +19,7 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { format, parseISO } from "date-fns"
 import api from "@/lib/api"
+import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -71,7 +71,6 @@ const formSchema = yup.object({
       series: yup.number().min(1).required(),
       repetitions: yup.number().min(1).required(),
       weight: yup.string().optional(),
-      time: yup.string().optional(),
       rest: yup.string().optional(),
     })
   ).min(1, "At least one set is required").required(),
@@ -84,7 +83,6 @@ interface RoutineSet {
   series: number
   repetitions: number
   weight?: string
-  time?: string
   rest?: string
 }
 
@@ -101,6 +99,16 @@ interface RoutinesClientProps {
     initialRoutines: Routine[];
 }
 
+const CATEGORY_IMAGES: Record<string, string> = {
+  "Chest": "/assets/categories/Chest.png",
+  "Back": "/assets/categories/Back.png",
+  "Legs": "/assets/categories/Legs.png",
+  "Shoulders": "/assets/categories/Shoulders.png",
+  "Arms": "/assets/categories/Arms.png",
+  "Core": "/assets/categories/Core.png",
+  "Cardio": "/assets/categories/Cardio.png",
+};
+
 export function RoutinesClient({ initialRoutines }: RoutinesClientProps) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
@@ -113,7 +121,7 @@ export function RoutinesClient({ initialRoutines }: RoutinesClientProps) {
       name: "",
       category: "",
       date: new Date().toISOString().split('T')[0],
-      sets: [{ series: 1, repetitions: 10, weight: "", time: "", rest: "" }],
+      sets: [{ series: 1, repetitions: 10, weight: "", rest: "" }],
       observations: "",
     },
   })
@@ -132,7 +140,7 @@ export function RoutinesClient({ initialRoutines }: RoutinesClientProps) {
         name: "",
         category: "",
         date: new Date().toISOString().split('T')[0],
-        sets: [{ series: 1, repetitions: 10, weight: "", time: "", rest: "" }],
+        sets: [{ series: 1, repetitions: 10, weight: "", rest: "" }],
         observations: "",
       })
     }
@@ -149,7 +157,6 @@ export function RoutinesClient({ initialRoutines }: RoutinesClientProps) {
           series: s.series,
           repetitions: s.repetitions,
           weight: s.weight || "",
-          time: s.time || "",
           rest: s.rest || "",
       })),
       observations: routine.observations || "",
@@ -168,7 +175,6 @@ export function RoutinesClient({ initialRoutines }: RoutinesClientProps) {
           series: s.series,
           repetitions: s.repetitions,
           weight: s.weight || "",
-          time: s.time || "",
           rest: s.rest || "",
       })),
       observations: routine.observations || "",
@@ -263,8 +269,8 @@ export function RoutinesClient({ initialRoutines }: RoutinesClientProps) {
               </SheetDescription>
             </SheetHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 pr-2">
-                <div className="space-y-4 border-b pb-6">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10 pr-2">
+                <div className="space-y-6 border-b pb-8">
                   <FormField
                     control={form.control}
                     name="name"
@@ -329,7 +335,7 @@ export function RoutinesClient({ initialRoutines }: RoutinesClientProps) {
                       type="button" 
                       variant="outline" 
                       size="sm" 
-                      onClick={() => append({ series: fields.length + 1, repetitions: 10, weight: "", time: "", rest: "" })}
+                      onClick={() => append({ series: fields.length + 1, repetitions: 10, weight: "", rest: "" })}
                     >
                       <Plus className="mr-2 h-3 w-3" /> Add Set
                     </Button>
@@ -357,9 +363,9 @@ export function RoutinesClient({ initialRoutines }: RoutinesClientProps) {
                           name={`sets.${index}.repetitions`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-[10px] uppercase">Reps</FormLabel>
+                              <FormLabel className="text-[10px] uppercase font-bold text-muted-foreground">Reps</FormLabel>
                               <FormControl>
-                                <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} />
+                                <Input type="number" {...field} className="bg-background" onChange={e => field.onChange(parseInt(e.target.value))} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -370,22 +376,9 @@ export function RoutinesClient({ initialRoutines }: RoutinesClientProps) {
                           name={`sets.${index}.weight`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-[10px] uppercase">Weight</FormLabel>
+                              <FormLabel className="text-[10px] uppercase font-bold text-muted-foreground">Weight</FormLabel>
                               <FormControl>
-                                <Input placeholder="50kg" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                         <FormField
-                          control={form.control}
-                          name={`sets.${index}.time`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-[10px] uppercase">Time</FormLabel>
-                              <FormControl>
-                                <Input placeholder="30s" {...field} />
+                                <Input placeholder="50kg" {...field} className="bg-background" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -396,9 +389,9 @@ export function RoutinesClient({ initialRoutines }: RoutinesClientProps) {
                           name={`sets.${index}.rest`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-[10px] uppercase">Rest</FormLabel>
+                              <FormLabel className="text-[10px] uppercase font-bold text-muted-foreground">Rest</FormLabel>
                               <FormControl>
-                                <Input placeholder="1m" {...field} />
+                                <Input placeholder="1m" {...field} className="bg-background" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -450,8 +443,18 @@ export function RoutinesClient({ initialRoutines }: RoutinesClientProps) {
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {groupedRoutines[date].map((routine) => (
-                <Card key={routine.id} className="relative overflow-hidden transition-all hover:shadow-md border-l-4 border-l-primary">
-                  <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                <Card key={routine.id} className="group relative overflow-hidden transition-all hover:shadow-lg border-l-4 border-l-primary bg-card/50 backdrop-blur-sm">
+                  {CATEGORY_IMAGES[routine.category] && (
+                    <div className="absolute -right-4 -top-4 w-28 h-28 opacity-[0.08] group-hover:opacity-15 transition-opacity pointer-events-none">
+                       <Image 
+                          src={CATEGORY_IMAGES[routine.category]} 
+                          alt={routine.category} 
+                          fill
+                          className="object-contain"
+                       />
+                    </div>
+                  )}
+                  <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 relative z-10">
                       <div className="space-y-1">
                           <CardTitle className="text-base font-semibold">
                               {routine.name}
@@ -492,12 +495,6 @@ export function RoutinesClient({ initialRoutines }: RoutinesClientProps) {
                                   <span>{set.weight}</span>
                                 </div>
                              )}
-                             {set.time && (
-                                <div className="flex items-center gap-1 text-muted-foreground">
-                                    <Clock className="h-3 w-3" />
-                                    <span>{set.time}</span>
-                                </div>
-                            )}
                           </div>
                         </div>
                       ))}
