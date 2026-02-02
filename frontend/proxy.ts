@@ -1,28 +1,35 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import createMiddleware from 'next-intl/middleware';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { routing } from './i18n/routing';
+
+const intlMiddleware = createMiddleware(routing);
 
 export function proxy(request: NextRequest) {
-  const token = request.cookies.get('token')?.value
-  const { pathname } = request.nextUrl
+  const { pathname } = request.nextUrl;
+  const token = request.cookies.get('token')?.value;
 
-  // Define route types
-  const isAuthRoute = pathname.startsWith('/auth')
-  const isProtectedRoute = pathname.startsWith('/dashboard')
+  // Define route patterns (matching with or without locale prefix)
+  const isAuthPage = pathname.match(/^\/(?:en|es)\/auth/) || pathname.startsWith('/auth');
+  const isDashboardPage = pathname.match(/^\/(?:en|es)\/dashboard/) || pathname.startsWith('/dashboard');
 
-  // Logged in user trying to access auth pages (login/register)
-  if (token && isAuthRoute) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+  // 1. Handle Authentication Redirects
+  if (token && isAuthPage) {
+    // Already logged in, move to dashboard
+    const locale = pathname.match(/^\/(en|es)/)?.[1] || 'es';
+    return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
   }
 
-  // Unauthorized user trying to access protected dashboard pages
-  if (!token && isProtectedRoute) {
-    return NextResponse.redirect(new URL('/auth/login', request.url))
+  if (!token && isDashboardPage) {
+    // Not logged in, move to login
+    const locale = pathname.match(/^\/(en|es)/)?.[1] || 'es';
+    return NextResponse.redirect(new URL(`/${locale}/auth/login`, request.url));
   }
 
-  return NextResponse.next()
+  // 2. Run next-intl middleware for localization
+  return intlMiddleware(request);
 }
 
-// Matching Paths config
 export const config = {
   matcher: [
     /*
@@ -35,4 +42,4 @@ export const config = {
      */
     '/((?!api|_next/static|_next/image|favicon.ico|assets).*)',
   ],
-}
+};

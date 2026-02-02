@@ -1,0 +1,50 @@
+{
+  "HomePage": {
+    "title": "ANTIGRAVITY",
+    "subtitle": "Tu bloc de notas de entrenamiento",
+    "description": "Registra tus ejercicios, sigue tu progreso y personaliza tu entrenamiento a tu manera. Simple, potente y totalmente tuyo.",
+    "cta": "Empezar Ahora",
+    "login": "Iniciar Sesión"
+  },
+  "Metadata": {
+    "title": "Antigravity - Bloc de notas de entrenamiento",
+    "description": "Registra tu progreso y personaliza tus rutinas con el bloc de notas definitivo para atletas."
+  },
+  "Auth": {
+    "login": "Iniciar Sesión",
+    "register": "Registrarse",
+    "logout": "Cerrar Sesión",
+    "email": "Correo Electrónico",
+    "password": "Contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "noAccount": "¿No tienes una cuenta?",
+    "haveAccount": "¿Ya tienes una cuenta?",
+    "loginTitle": "Bienvenido de nuevo",
+    "loginDescription": "Ingresa tus credenciales para acceder a tu cuenta",
+    "registerTitle": "Crear una cuenta",
+    "registerDescription": "Ingresa tus datos para empezar",
+    "loggingIn": "Iniciando sesión...",
+    "signingUp": "Registrándose...",
+    "googleLogin": "Continuar con Google"
+  },
+  "Dashboard": {
+    "title": "Rutinas",
+    "subtitle": "Gestiona y haz seguimiento de tu entrenamiento diario.",
+    "addRoutine": "Añadir Rutina",
+    "editRoutine": "Editar Rutina",
+    "noRoutines": "No se encontraron rutinas.",
+    "routineName": "Nombre del Ejercicio",
+    "category": "Categoría",
+    "date": "Fecha",
+    "observations": "Observaciones",
+    "sets": "Series",
+    "reps": "Reps",
+    "weight": "Peso",
+    "rest": "Descanso",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "repeat": "Repetir",
+    "confirmDelete": "¿Estás seguro de que quieres eliminar esta rutina?"
+  }
+}

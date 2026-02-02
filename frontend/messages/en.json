@@ -1,0 +1,50 @@
+{
+  "HomePage": {
+    "title": "ANTIGRAVITY",
+    "subtitle": "Your workout notepad",
+    "description": "Log your exercises, track your progress, and customize your training your way. Simple, powerful, and entirely yours.",
+    "cta": "Get Started",
+    "login": "Login"
+  },
+  "Metadata": {
+    "title": "Antigravity - Workout Notepad",
+    "description": "Track your progress and customize your routines with the ultimate notepad for athletes."
+  },
+  "Auth": {
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "email": "Email Address",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "loginTitle": "Welcome back",
+    "loginDescription": "Enter your credentials to access your account",
+    "registerTitle": "Create an account",
+    "registerDescription": "Enter your details to get started",
+    "loggingIn": "Logging in...",
+    "signingUp": "Signing up...",
+    "googleLogin": "Continue with Google"
+  },
+  "Dashboard": {
+    "title": "Routines",
+    "subtitle": "Manage and track your daily training.",
+    "addRoutine": "Add Routine",
+    "editRoutine": "Edit Routine",
+    "noRoutines": "No routines found.",
+    "routineName": "Exercise Name",
+    "category": "Category",
+    "date": "Date",
+    "observations": "Observations",
+    "sets": "Sets",
+    "reps": "Reps",
+    "weight": "Weight",
+    "rest": "Rest",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "repeat": "Repeat",
+    "confirmDelete": "Are you sure you want to delete this routine?"
+  }
+}
