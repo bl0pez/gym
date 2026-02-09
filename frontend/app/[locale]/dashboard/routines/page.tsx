@@ -1,16 +1,15 @@
 
-import apiServer from "@/lib/api-server"
-import { RoutinesClient } from "./routines-client"
+import { getRoutines } from "@/actions/routine-actions";
+import { RoutinesClient } from "./routines-client";
 
 export default async function RoutinesPage() {
-  let routines = []
-  
-  try {
-    const { data } = await apiServer.get("/routines")
-    routines = data
-  } catch (error) {
-    console.error("Failed to fetch routines in SSR:", error)
+  const { data: routines, error } = await getRoutines();
+
+  if (error) {
+    // In a real app, you might want to show an error boundary or a specific error UI
+    console.error("Failed to fetch routines:", error);
   }
 
-  return <RoutinesClient initialRoutines={routines} />
+  return <RoutinesClient initialRoutines={routines || []} />;
 }
+

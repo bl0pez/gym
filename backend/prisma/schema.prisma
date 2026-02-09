@@ -1,0 +1,90 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  USER
+  PROFESSOR
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  fullName  String
+  role      Role     @default(USER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  routines         Routine[]
+  assignedPrograms ProgramAssignment[]
+  createdPrograms  TrainingProgram[]   @relation("ProfessorPrograms")
+}
+
+model Routine {
+  id           String   @id @default(uuid())
+  category     String
+  name         String
+  description  String?
+  date         String?
+  sets         Json?
+  observations String?
+  videoUrls    String[] @default([])
+  isTemplate   Boolean  @default(false)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  programId String?
+  program   TrainingProgram? @relation(fields: [programId], references: [id])
+
+  originalRoutineId String?
+  originalRoutine   Routine?  @relation("RoutineToRoutine", fields: [originalRoutineId], references: [id])
+  clonedRoutines    Routine[] @relation("RoutineToRoutine")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TrainingProgram {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  weeks       Int     @default(1)
+
+  professorId String
+  professor   User   @relation("ProfessorPrograms", fields: [professorId], references: [id])
+
+  routines    Routine[]
+  assignments ProgramAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProgramAssignment {
+  id        String          @id @default(uuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id])
+  programId String
+  program   TrainingProgram @relation(fields: [programId], references: [id])
+
+  isActive   Boolean  @default(true)
+  assignedAt DateTime @default(now())
+
+  @@unique([userId, programId])
+}

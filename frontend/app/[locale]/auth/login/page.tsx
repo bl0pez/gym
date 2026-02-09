@@ -9,7 +9,6 @@ import { useForm } from "react-hook-form"
 import * as yup from "yup"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import Cookies from "js-cookie"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -29,7 +28,8 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import api from "@/lib/api"
+import { loginAction } from "@/actions/auth-actions"
+import { LoginDto } from "@/types"
 
 const formSchema = yup.object({
   email: yup.string().email("Please enter a valid email address.").required("Email is required"),
@@ -40,7 +40,7 @@ export default function LoginPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
-  const form = useForm({
+  const form = useForm<LoginDto>({
     resolver: yupResolver(formSchema),
     defaultValues: {
       email: "",
@@ -48,25 +48,26 @@ export default function LoginPage() {
     },
   })
 
-  async function onSubmit(values: yup.InferType<typeof formSchema>) {
+
+  async function onSubmit(values: LoginDto) {
     setIsLoading(true)
-    try {
-      const response = await api.post("/auth/login", values)
-      Cookies.set("token", response.data.access_token, { expires: 7 })
+    const { error } = await loginAction(values)
+    setIsLoading(false)
+
+
+    if (error) {
+      toast.error(error)
+    } else {
       toast.success("Login successful")
       router.push("/dashboard")
-    } catch (error: any) {
-      console.error(error)
-      const message = error.response?.data?.message || "Something went wrong"
-      toast.error(message)
-    } finally {
-      setIsLoading(false)
+      router.refresh()
     }
   }
 
   const handleGoogleLogin = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/auth/google`
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/auth/google`
   }
+
 
   return (
     <Card className="w-full shadow-lg border-none bg-white/90 backdrop-blur-sm dark:bg-neutral-950/90">

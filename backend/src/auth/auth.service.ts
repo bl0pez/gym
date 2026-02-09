@@ -1,42 +1,95 @@
-import { Injectable } from '@nestjs/common';
-import { UsersService } from '../users/users.service';
+import {
+  Injectable,
+  BadRequestException,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { UsersService } from 'src/users/users.service';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { Payload } from 'src/interfaces';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private usersService: UsersService,
-    private jwtService: JwtService
+    private readonly usersService: UsersService,
+    private readonly jwtService: JwtService,
   ) {}
 
-  async validateUser(email: string, pass: string): Promise<any> {
-    const user = await this.usersService.findOneByEmail(email);
-    if (user && user.password) {
-       const isMatch = await bcrypt.compare(pass, user.password);
-       if (isMatch) {
-          const { password, ...result } = user;
-          return result;
-       }
+  async register(registerDto: RegisterDto) {
+    const { password, email, ...userData } = registerDto;
+
+    const userExists = await this.usersService.findOneByEmail(email);
+    if (userExists) {
+      throw new BadRequestException('El correo electrónico ya está registrado');
     }
-    return null;
+
+    try {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const user = await this.usersService.create({
+        ...userData,
+        email,
+        password: hashedPassword,
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password: _, ...result } = user;
+      return result;
+    } catch {
+      throw new InternalServerErrorException('Error al registrar el usuario');
+    }
   }
 
-  async login(user: any) {
-    const payload = { email: user.email, sub: user.id };
+  async login(loginDto: LoginDto) {
+    const { email, password } = loginDto;
+
+    const user = await this.usersService.findOneByEmail(email);
+    if (!user) {
+      throw new UnauthorizedException('Credenciales no válidas');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Credenciales no válidas');
+    }
+
+    const payload: Payload = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    };
+    const token = this.jwtService.sign(payload);
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _, ...userResult } = user;
     return {
-      access_token: this.jwtService.sign(payload),
+      user: userResult,
+      token,
     };
   }
-  async googleLogin(user: any) {
+
+  async checkStatus(userData: Payload) {
+    const user = await this.usersService.findOneByEmail(userData.email);
+
     if (!user) {
-      return 'No user from google';
+      throw new UnauthorizedException('Token no válido');
     }
-    const internalUser = await this.usersService.findOrCreate(user);
-    const payload = { email: internalUser.email, sub: internalUser.id };
+
+    const payload: Payload = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    };
+    const token = this.jwtService.sign(payload);
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _, ...userResult } = user;
+
     return {
-      access_token: this.jwtService.sign(payload),
-      user: internalUser
+      user: userResult,
+      token,
     };
   }
 }

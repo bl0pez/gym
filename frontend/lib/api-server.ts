@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { ActionResponse } from '../types';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
@@ -17,48 +18,83 @@ async function getAuthHeaders() {
   return headers;
 }
 
+async function handleResponse<T>(res: Response): Promise<ActionResponse<T>> {
+  // If there's a Set-Cookie header, we might want to forward it.
+  // This is handled in the actions usually, but let's make the token available if possible.
+  
+  if (!res.ok) {
+    try {
+      const errorData = await res.json();
+      return { 
+        data: null, 
+        error: errorData.message || `Error ${res.status}: ${res.statusText}` 
+      };
+    } catch {
+      return { 
+        data: null, 
+        error: `Error ${res.status}: ${res.statusText}` 
+      };
+    }
+  }
+
+  try {
+    const data = await res.json();
+    return { data, error: null };
+  } catch {
+    if (res.status === 204) return { data: {} as T, error: null };
+    return { data: null, error: 'Failed to parse response' };
+  }
+}
+
 const apiServer = {
-  get: async (url: string, options: RequestInit = {}) => {
+  // Return both data and the original response for advanced cases like auth
+  request: async <T>(url: string, init: RequestInit = {}): Promise<{ result: ActionResponse<T>, response: Response }> => {
     const headers = await getAuthHeaders();
     const res = await fetch(`${BASE_URL}${url}`, {
-      ...options,
-      headers: { ...headers, ...options.headers },
+      ...init,
+      headers: { ...headers, ...init.headers },
     });
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-    return { data: await res.json() };
+    const result = await handleResponse<T>(res.clone());
+    return { result, response: res };
   },
-  post: async (url: string, body: any, options: RequestInit = {}) => {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BASE_URL}${url}`, {
+
+  get: async <T>(url: string, tags: string[] = []): Promise<ActionResponse<T>> => {
+    const { result } = await apiServer.request<T>(url, { next: { tags } });
+    return result;
+  },
+
+  post: async <T>(url: string, body: unknown): Promise<ActionResponse<T>> => {
+    const { result } = await apiServer.request<T>(url, {
       method: 'POST',
       body: JSON.stringify(body),
-      ...options,
-      headers: { ...headers, ...options.headers },
     });
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-    return { data: await res.json() };
+    return result;
   },
-  patch: async (url: string, body: any, options: RequestInit = {}) => {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BASE_URL}${url}`, {
+  
+  // Custom post that returns the full response object
+  postFull: async <T>(url: string, body: unknown): Promise<{ result: ActionResponse<T>, response: Response }> => {
+    return apiServer.request<T>(url, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+
+  patch: async <T>(url: string, body: unknown): Promise<ActionResponse<T>> => {
+    const { result } = await apiServer.request<T>(url, {
       method: 'PATCH',
       body: JSON.stringify(body),
-      ...options,
-      headers: { ...headers, ...options.headers },
     });
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-    return { data: await res.json() };
+    return result;
   },
-  delete: async (url: string, options: RequestInit = {}) => {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${BASE_URL}${url}`, {
+
+  delete: async <T>(url: string): Promise<ActionResponse<T>> => {
+    const { result } = await apiServer.request<T>(url, {
       method: 'DELETE',
-      ...options,
-      headers: { ...headers, ...options.headers },
     });
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-    return { data: await res.json() };
+    return result;
   },
 };
 
+
 export default apiServer;
+

@@ -1,40 +1,20 @@
-
-"use client"
-
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
-import api from "@/lib/api"
+import apiServer from "@/lib/api-server"
 import { Separator } from "@/components/ui/separator"
+import { redirect } from "next/navigation"
+import { User } from "@/types"
 
-interface UserProfile {
-  firstName?: string;
-  lastName?: string;
-  email: string;
-  avatarUrl?: string;
-}
-
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const router = useRouter()
-  const [user, setUser] = useState<UserProfile | null>(null)
+  const { data: user, error } = await apiServer.get<User>("/auth/profile")
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const response = await api.get("/auth/profile")
-        setUser(response.data)
-      } catch (error) {
-        console.error("Failed to fetch profile", error)
-        router.push("/auth/login")
-      }
-    }
-    fetchProfile()
-  }, [router])
+  if (error || !user) {
+    redirect("/auth/login")
+  }
 
   return (
     <SidebarProvider>
@@ -51,3 +31,4 @@ export default function DashboardLayout({
     </SidebarProvider>
   )
 }
+

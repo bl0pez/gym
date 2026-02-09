@@ -31,25 +31,12 @@ import {
 import { Target, TrendingUp, Weight } from "lucide-react"
 import { format, parseISO } from "date-fns"
 
-interface RoutineSet {
-  series: number
-  repetitions: number
-  weight?: string
-  time?: string
-  rest?: string
-}
-
-interface Routine {
-  id: string
-  name: string
-  category: string
-  date: string
-  sets: RoutineSet[]
-}
+import { Routine } from "@/types"
 
 interface ExerciseProgressProps {
   routines: Routine[]
 }
+
 
 const chartConfig = {
   maxWeight: {

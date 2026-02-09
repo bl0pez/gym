@@ -1,67 +1,62 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { CreateUserDto } from './dto/create-user.dto';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { User } from './entities/user.entity';
+import { Prisma } from 'src/generated/prisma/client';
 
 @Injectable()
 export class UsersService {
-  constructor(
-    @InjectRepository(User)
-    private usersRepository: Repository<User>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async create(createUserDto: CreateUserDto) {
-    let password = createUserDto.password;
-    if (password) {
-      const saltOriginal = await import('bcrypt');
-      const salt = await saltOriginal.genSalt();
-      password = await saltOriginal.hash(password, salt);
-    }
-    const user = this.usersRepository.create({ ...createUserDto, password });
-    return this.usersRepository.save(user);
+  async findOneByEmail(email: string) {
+    return this.prisma.user.findUnique({
+      where: { email },
+    });
   }
 
-  findAll() {
-    return this.usersRepository.find();
+  async findOneById(id: string) {
+    return this.prisma.user.findUnique({
+      where: { id },
+    });
   }
 
-  findOne(id: string) {
-    return this.usersRepository.findOneBy({ id });
-  }
-
-  findOneByEmail(email: string) {
-    return this.usersRepository.findOne({ where: { email }, select: ['id', 'email', 'password', 'firstName', 'lastName'] }); 
+  async findAll() {
+    return this.prisma.user.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+        // Exclude password
+      },
+    });
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {
-    const user = await this.findOne(id);
-    if (!user) return null;
-    this.usersRepository.merge(user, updateUserDto);
-    return this.usersRepository.save(user);
-  }
+    const { password, ...rest } = updateUserDto;
 
-  async remove(id: string) {
-    return this.usersRepository.delete(id);
-  }
+    const data: Prisma.UserUpdateInput = { ...rest };
 
-  async findOrCreate(googleUser: any) {
-    let user = await this.usersRepository.findOne({ where: { email: googleUser.email } });
-    if (!user) {
-      user = this.usersRepository.create({
-        email: googleUser.email,
-        firstName: googleUser.firstName,
-        lastName: googleUser.lastName,
-        avatarUrl: googleUser.picture,
-        googleId: googleUser.googleId,
-      });
-      await this.usersRepository.save(user);
-    } else if (!user.googleId) {
-      user.googleId = googleUser.googleId;
-      user.avatarUrl = googleUser.picture; // Optional: update avatar
-      await this.usersRepository.save(user);
+    if (password) {
+      const bcrypt = await import('bcrypt');
+      data.password = bcrypt.hashSync(password, 10);
     }
-    return user;
+
+    return this.prisma.user.update({
+      where: { id },
+      data,
+    });
+  }
+
+  async create(data: Prisma.UserCreateInput) {
+    try {
+      return await this.prisma.user.create({
+        data,
+      });
+    } catch {
+      throw new InternalServerErrorException('Error al crear el usuario');
+    }
   }
 }

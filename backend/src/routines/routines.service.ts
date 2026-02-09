@@ -1,33 +1,31 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateRoutineDto } from './dto/create-routine.dto';
 import { UpdateRoutineDto } from './dto/update-routine.dto';
-import { Routine } from './entities/routine.entity';
-import { User } from '../users/entities/user.entity';
+import { Payload } from 'src/interfaces';
 
 @Injectable()
 export class RoutinesService {
-  constructor(
-    @InjectRepository(Routine)
-    private routinesRepository: Repository<Routine>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  create(createRoutineDto: CreateRoutineDto, user: User) {
-    const routine = this.routinesRepository.create({
-      ...createRoutineDto,
-      user,
+  async create(createRoutineDto: CreateRoutineDto, user: Payload) {
+    return this.prisma.routine.create({
+      data: {
+        ...createRoutineDto,
+        userId: user.id,
+      },
     });
-    return this.routinesRepository.save(routine);
   }
 
-  findAll(user: User) {
-    return this.routinesRepository.find({ where: { user: { id: user.id } } });
+  async findAll(user: Payload) {
+    return this.prisma.routine.findMany({
+      where: { userId: user.id },
+    });
   }
 
-  async findOne(id: string, user: User) {
-    const routine = await this.routinesRepository.findOne({
-      where: { id, user: { id: user.id } },
+  async findOne(id: string, user: Payload) {
+    const routine = await this.prisma.routine.findUnique({
+      where: { id, userId: user.id },
     });
     if (!routine) {
       throw new NotFoundException(`Routine #${id} not found`);
@@ -35,14 +33,18 @@ export class RoutinesService {
     return routine;
   }
 
-  async update(id: string, updateRoutineDto: UpdateRoutineDto, user: User) {
-    const routine = await this.findOne(id, user);
-    this.routinesRepository.merge(routine, updateRoutineDto);
-    return this.routinesRepository.save(routine);
+  async update(id: string, updateRoutineDto: UpdateRoutineDto, user: Payload) {
+    await this.findOne(id, user);
+    return this.prisma.routine.update({
+      where: { id },
+      data: updateRoutineDto,
+    });
   }
 
-  async remove(id: string, user: User) {
+  async remove(id: string, user: Payload) {
     const routine = await this.findOne(id, user);
-    return this.routinesRepository.remove(routine);
+    return this.prisma.routine.delete({
+      where: { id: routine.id },
+    });
   }
 }

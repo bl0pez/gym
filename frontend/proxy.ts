@@ -7,7 +7,7 @@ const intlMiddleware = createMiddleware(routing);
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const token = request.cookies.get('token')?.value;
+  const token = request.cookies.get('access_token')?.value;
 
   // Define route patterns (matching with or without locale prefix)
   const isAuthPage = pathname.match(/^\/(?:en|es)\/auth/) || pathname.startsWith('/auth');

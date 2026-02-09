@@ -1,16 +1,15 @@
+"use client";
 
-"use client"
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { useForm } from "react-hook-form";
+import * as yup from "yup";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
-import { useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { yupResolver } from "@hookform/resolvers/yup"
-import { useForm } from "react-hook-form"
-import * as yup from "yup"
-import { Loader2 } from "lucide-react"
-import { toast } from "sonner"
-
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -18,7 +17,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -26,44 +25,47 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import api from "@/lib/api"
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { registerAction } from "@/actions/auth-actions";
+import { RegisterDto } from "@/types";
 
-const formSchema = yup.object({
-  firstName: yup.string().min(2, "First name must be at least 2 characters.").required("First name is required"),
-  lastName: yup.string().min(2, "Last name must be at least 2 characters.").required("Last name is required"),
-  email: yup.string().email("Please enter a valid email address.").required("Email is required"),
-  password: yup.string().min(6, "Password must be at least 6 characters.").required("Password is required"),
-}).required()
+const formSchema = yup
+  .object({
+    fullName: yup.string().required("Full name is required"),
+    email: yup
+      .string()
+      .email("Please enter a valid email address.")
+      .required("Email is required"),
+    password: yup
+      .string()
+      .min(6, "Password must be at least 6 characters.")
+      .required("Password is required"),
+  })
+  .required();
 
 export default function RegisterPage() {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter();
 
-  const form = useForm({
+  const form = useForm<RegisterDto>({
     resolver: yupResolver(formSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
+      fullName: "",
       email: "",
       password: "",
     },
-  })
+  });
 
-  async function onSubmit(values: yup.InferType<typeof formSchema>) {
-    setIsLoading(true)
-    try {
-      await api.post("/auth/register", values)
-      toast.success("Account created successfully. Please login.")
-      router.push("/auth/login")
-    } catch (err: unknown) {
-       console.error(err)
-       const error = err as { response?: { data?: { message?: string } } }
-       const message = error.response?.data?.message || "Something went wrong"
-       toast.error(message)
-    } finally {
-      setIsLoading(false)
+  const isLoading = form.formState.isSubmitting;
+
+  async function onSubmit(values: RegisterDto) {
+    const { error } = await registerAction(values);
+
+    if (error) {
+      toast.error(error);
+    } else {
+      toast.success("Account created successfully. Please login.");
+      router.push("/auth/login");
     }
   }
 
@@ -80,35 +82,20 @@ export default function RegisterPage() {
       <CardContent className="grid gap-4">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-                <FormField
-                control={form.control}
-                name="firstName"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>First Name</FormLabel>
-                    <FormControl>
-                        <Input placeholder="John" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                <FormField
-                control={form.control}
-                name="lastName"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Last Name</FormLabel>
-                    <FormControl>
-                        <Input placeholder="Doe" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-            </div>
-            
+            <FormField
+              control={form.control}
+              name="fullName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Full Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="John Doe" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="email"
@@ -154,5 +141,5 @@ export default function RegisterPage() {
         </div>
       </CardFooter>
     </Card>
-  )
+  );
 }

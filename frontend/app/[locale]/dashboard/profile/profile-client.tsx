@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react"
@@ -27,32 +26,30 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import api from "@/lib/api"
+import { updateProfileAction } from "@/actions/auth-actions"
+import type { User } from "@/types"
 
 const formSchema = yup.object({
   firstName: yup.string().min(2, "First name must be at least 2 characters.").required("First name is required"),
   lastName: yup.string().min(2, "Last name must be at least 2 characters.").required("Last name is required"),
-  avatarUrl: yup.string().url("Please enter a valid URL.").optional(),
+  avatarUrl: yup.string().transform((v) => v === "" ? null : v).nullable().defined().url("Please enter a valid URL."),
 }).required()
 
-interface UserProfile {
-  id: string
-  email: string
-  firstName: string
-  lastName: string
-  avatarUrl?: string
-}
+
+
+type ProfileFormValues = yup.InferType<typeof formSchema>
 
 interface ProfileClientProps {
-    user: UserProfile;
+  user: User;
 }
+
 
 export function ProfileClient({ user: initialUser }: ProfileClientProps) {
   const [isLoading, setIsLoading] = useState(false)
-  const [user, setUser] = useState<UserProfile>(initialUser)
+  const [user, setUser] = useState<User>(initialUser)
   const router = useRouter()
 
-  const form = useForm<yup.InferType<typeof formSchema>>({
+  const form = useForm({
     resolver: yupResolver(formSchema),
     defaultValues: {
       firstName: user.firstName || "",
@@ -61,18 +58,18 @@ export function ProfileClient({ user: initialUser }: ProfileClientProps) {
     },
   })
 
-  async function onSubmit(values: yup.InferType<typeof formSchema>) {
+  async function onSubmit(values: ProfileFormValues) {
     setIsLoading(true)
-    try {
-      await api.patch(`/users/${user.id}`, values)
+    const { data, error } = await updateProfileAction(user.id, values as Partial<User>)
+    setIsLoading(false)
+
+
+    if (error) {
+      toast.error(error)
+    } else {
       toast.success("Profile updated")
-      setUser((prev) => ({ ...prev, ...values } as UserProfile))
+      if (data) setUser(data)
       router.refresh()
-    } catch (err: unknown) {
-      console.error(err)
-      toast.error("Failed to update profile")
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -95,7 +92,7 @@ export function ProfileClient({ user: initialUser }: ProfileClientProps) {
         <CardContent className="space-y-6">
             <div className="flex items-center gap-6">
                  <Avatar className="h-24 w-24">
-                    <AvatarImage src={user.avatarUrl} alt={user.firstName} />
+                    <AvatarImage src={user.avatarUrl || ""} alt={user.firstName} />
                     <AvatarFallback className="text-lg">{user.firstName?.[0]}{user.lastName?.[0]}</AvatarFallback>
                   </Avatar>
                   <div>
@@ -141,7 +138,7 @@ export function ProfileClient({ user: initialUser }: ProfileClientProps) {
                   <FormItem>
                     <FormLabel>Avatar URL</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://example.com/avatar.jpg" {...field} />
+                      <Input placeholder="https://example.com/avatar.jpg" {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

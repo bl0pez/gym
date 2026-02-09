@@ -16,9 +16,9 @@ import {
   Copy,
 } from "lucide-react"
 import { toast } from "sonner"
-import { useRouter } from "next/navigation"
+import { createRoutine, updateRoutine, deleteRoutine } from "@/actions/routine-actions"
+import type { Routine, RoutineFormValues } from "@/types"
 import { format, parseISO } from "date-fns"
-import api from "@/lib/api"
 import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
@@ -77,26 +77,10 @@ const formSchema = yup.object({
   observations: yup.string().ensure().default(""),
 }).required()
 
-type RoutineFormValues = yup.InferType<typeof formSchema>
-
-interface RoutineSet {
-  series: number
-  repetitions: number
-  weight?: string
-  rest?: string
-}
-
-interface Routine {
-  id: string
-  name: string
-  category: string
-  date: string
-  sets: RoutineSet[]
-  observations: string
-}
+// Local type definition removed as it's now imported from @/types
 
 interface RoutinesClientProps {
-    initialRoutines: Routine[];
+  initialRoutines: Routine[];
 }
 
 const CATEGORY_IMAGES: Record<string, string> = {
@@ -110,7 +94,6 @@ const CATEGORY_IMAGES: Record<string, string> = {
 };
 
 export function RoutinesClient({ initialRoutines }: RoutinesClientProps) {
-  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null)
@@ -185,34 +168,31 @@ export function RoutinesClient({ initialRoutines }: RoutinesClientProps) {
   // Delete Routine
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this routine?")) return
-    try {
-      await api.delete(`/routines/${id}`)
+    setIsLoading(true)
+    const { error } = await deleteRoutine(id)
+    setIsLoading(false)
+
+    if (error) {
+      toast.error(error)
+    } else {
       toast.success("Routine deleted")
-      router.refresh()
-    } catch (error) {
-      console.error(error)
-      toast.error("Failed to delete routine")
     }
   }
 
   // Submit Form
   async function onSubmit(values: RoutineFormValues) {
     setIsLoading(true)
-    try {
-      if (editingRoutine) {
-        await api.patch(`/routines/${editingRoutine.id}`, values)
-        toast.success("Routine updated")
-      } else {
-        await api.post("/routines", values)
-        toast.success("Routine created")
-      }
-      setIsOpen(false)
-      router.refresh()
-    } catch (error) {
-      console.error(error)
-      toast.error("Failed to save routine")
-    } finally {
-      setIsLoading(false)
+    const res = editingRoutine 
+      ? await updateRoutine(editingRoutine.id, values)
+      : await createRoutine(values)
+    
+    setIsLoading(false)
+
+    if (res.error) {
+      toast.error(res.error)
+    } else {
+      toast.success(editingRoutine ? "Routine updated" : "Routine created")
+      handleOpenChange(false)
     }
   }
 

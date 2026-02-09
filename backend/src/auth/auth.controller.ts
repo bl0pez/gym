@@ -1,38 +1,69 @@
-import { Controller, Post, Body, UseGuards, Request, Get } from '@nestjs/common';
+import { Controller, Post, Body, Res, Get } from '@nestjs/common';
+import type { Response } from 'express';
 import { AuthService } from './auth.service';
-import { AuthGuard } from '@nestjs/passport';
-import { CreateUserDto } from '../users/dto/create-user.dto';
-import { UsersService } from '../users/users.service';
-import { LocalAuthGuard } from './local-auth.guard'; // Assuming this path
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { AuthUser } from './decorators/auth-user.decorator';
+import type { Payload } from 'src/interfaces';
+import { Auth } from './decorators/auth.decorator';
+import { envs } from 'src/config/envs.config';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService, private readonly usersService: UsersService) {}
+  private readonly nodeEnv = envs.nodeEnv;
 
-  @UseGuards(LocalAuthGuard)
-  @Post('login')
-  async login(@Request() req: any) {
-    return this.authService.login(req.user);
-  }
+  constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  async register(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  async register(@Body() registerDto: RegisterDto) {
+    return await this.authService.register(registerDto);
   }
-  
-  @UseGuards(AuthGuard('jwt'))
+
+  @Post('login')
+  async login(
+    @Body() loginDto: LoginDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const { user, token } = await this.authService.login(loginDto);
+
+    response.cookie('access_token', token, {
+      httpOnly: true,
+      secure: this.nodeEnv === 'production',
+      sameSite: 'lax',
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+    });
+
+    return user;
+  }
+
+  @Auth()
   @Get('profile')
-  getProfile(@Request() req: any) {
-    return req.user;
+  profile(@AuthUser() user: Payload) {
+    return user;
   }
 
-  @Get('google')
-  @UseGuards(AuthGuard('google'))
-  async googleAuth(@Request() req: any) {}
+  @Auth()
+  @Get('check-status')
+  async checkStatus(
+    @AuthUser() user: Payload,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const { user: userResult, token } =
+      await this.authService.checkStatus(user);
 
-  @Get('google/callback')
-  @UseGuards(AuthGuard('google'))
-  async googleAuthRedirect(@Request() req: any) {
-    return this.authService.googleLogin(req.user);
+    response.cookie('access_token', token, {
+      httpOnly: true,
+      secure: this.nodeEnv === 'production',
+      sameSite: 'lax',
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+    });
+
+    return userResult;
+  }
+
+  @Post('logout')
+  logout(@Res({ passthrough: true }) response: Response) {
+    response.clearCookie('access_token');
+    return { message: 'Sesión cerrada correctamente' };
   }
 }

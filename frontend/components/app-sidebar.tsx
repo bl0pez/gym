@@ -6,12 +6,12 @@ import {
   Dumbbell,
   LayoutDashboard,
   LineChart,
-  User,
+  User as UserIcon,
   LogOut,
 } from "lucide-react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import Cookies from "js-cookie"
+import { usePathname } from "next/navigation"
+
 
 import {
   Sidebar,
@@ -40,21 +40,24 @@ const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/dashboard/routines", icon: Dumbbell, label: "Routines" },
   { href: "/dashboard/progress", icon: LineChart, label: "Progress" },
-  { href: "/dashboard/profile", icon: User, label: "Profile" },
+  { href: "/dashboard/profile", icon: UserIcon, label: "Profile" },
 ]
 
+
+import { logoutAction } from "@/actions/auth-actions"
+import type { User as UserType } from "@/types"
+
 interface AppSidebarProps {
-    user: any;
+  user: UserType | null;
 }
 
 export function AppSidebar({ user }: AppSidebarProps) {
   const pathname = usePathname()
-  const router = useRouter()
 
-  const handleLogout = () => {
-    Cookies.remove("token")
-    router.push("/auth/login")
+  const handleLogout = async () => {
+    await logoutAction()
   }
+
 
   return (
     <Sidebar collapsible="icon">
@@ -144,10 +147,14 @@ export function AppSidebar({ user }: AppSidebarProps) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/profile">
+                    <UserIcon className="mr-2 h-4 w-4" />
+                    Profile
+                  </Link>
                 </DropdownMenuItem>
+
+
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                    <LogOut className="mr-2 h-4 w-4" />

@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Activity, TrendingUp } from "lucide-react"
 import apiServer from "@/lib/api-server"
@@ -6,33 +5,17 @@ import { VolumeChart } from "@/components/progress/volume-chart"
 import { ExerciseProgress } from "@/components/progress/exercise-progress"
 import { format, parseISO, subDays, eachDayOfInterval } from "date-fns"
 import { Separator } from "@/components/ui/separator"
-
-interface RoutineSet {
-  series: number
-  repetitions: number
-  weight?: string
-  time?: string
-  rest?: string
-}
-
-interface Routine {
-  id: string
-  name: string
-  category: string
-  date: string
-  sets: RoutineSet[]
-}
+import { Routine } from "@/types"
 
 export default async function ProgressPage() {
-  let routines: Routine[] = []
-  try {
-    const response = await apiServer.get("/routines")
-    if (response.data && Array.isArray(response.data)) {
-      routines = response.data
-    }
-  } catch (error) {
-    console.error("Failed to fetch routines for progress:", error)
+  const { data: routinesData, error } = await apiServer.get<Routine[]>("/routines")
+  const routines = routinesData || []
+
+  if (error) {
+     console.error("Failed to fetch routines for progress:", error)
+     // Optionally handle error UI or redirect
   }
+
 
   // Calculate Stats
   const totalWorkouts = new Set(routines.map(r => r.date)).size
