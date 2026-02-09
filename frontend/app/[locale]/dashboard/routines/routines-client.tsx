@@ -1,29 +1,27 @@
 "use client"
 
 import { useState } from "react"
-import { useForm, useFieldArray } from "react-hook-form"
-import { yupResolver } from "@hookform/resolvers/yup"
-import * as yup from "yup"
 import { 
-  Plus, 
   Pencil, 
   Trash2, 
   Dumbbell, 
   Weight,
   MoreVertical,
-  Loader2,
   Calendar,
   Copy,
+  Timer,
+  Plus
 } from "lucide-react"
+
 import { toast } from "sonner"
-import { createRoutine, updateRoutine, deleteRoutine } from "@/actions/routine-actions"
-import type { Routine, RoutineFormValues } from "@/types"
+import { deleteRoutine } from "@/actions/routine-actions"
+import type { Routine } from "@/types"
 import { format, parseISO } from "date-fns"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+
 import {
   Card,
   CardContent,
@@ -35,49 +33,17 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-
-const formSchema = yup.object({
-  name: yup.string().min(2, "Name must be at least 2 characters.").required("Name is required"),
-  category: yup.string().min(1, "Category is required.").required(),
-  date: yup.string().required("Date is required"),
-  sets: yup.array().of(
-    yup.object({
-      series: yup.number().min(1).required(),
-      repetitions: yup.number().min(1).required(),
-      weight: yup.string().optional(),
-      rest: yup.string().optional(),
-    })
-  ).min(1, "At least one set is required").required(),
-  observations: yup.string().ensure().default(""),
-}).required()
-
-// Local type definition removed as it's now imported from @/types
+import { RoutineForm, RoutineFormSchema } from "./routine-form"
 
 interface RoutinesClientProps {
   initialRoutines: Routine[];
@@ -94,53 +60,38 @@ const CATEGORY_IMAGES: Record<string, string> = {
 };
 
 export function RoutinesClient({ initialRoutines }: RoutinesClientProps) {
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null)
+  const [editingId, setEditingId] = useState<string | undefined>(undefined)
+  const [formData, setFormData] = useState<Partial<RoutineFormSchema> | undefined>(undefined);
 
-  const form = useForm<RoutineFormValues>({
-    resolver: yupResolver(formSchema),
-    defaultValues: {
-      name: "",
-      category: "",
-      date: new Date().toISOString().split('T')[0],
-      sets: [{ series: 1, repetitions: 10, weight: "", rest: "" }],
-      observations: "",
-    },
-  })
+  console.log(initialRoutines);
 
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: "sets",
-  })
+  const handleSuccess = () => {
+    setIsOpen(false)
+    router.refresh()
+  }
 
   // Handle Sheet Open state
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open)
     if (!open) {
-      setEditingRoutine(null)
-      form.reset({
-        name: "",
-        category: "",
-        date: new Date().toISOString().split('T')[0],
-        sets: [{ series: 1, repetitions: 10, weight: "", rest: "" }],
-        observations: "",
-      })
+      setEditingId(undefined)
+      setFormData(undefined)
     }
   }
 
   // Edit Routine
   const handleEdit = (routine: Routine) => {
-    setEditingRoutine(routine)
-    form.reset({
+    setEditingId(routine.id)
+    setFormData({
       name: routine.name,
       category: routine.category,
       date: routine.date,
-      sets: (routine.sets || []).map(s => ({
-          series: s.series,
-          repetitions: s.repetitions,
-          weight: s.weight || "",
-          rest: s.rest || "",
+      sets: routine.sets.map(s => ({
+        sets: String(s.sets),
+        repetitions: String(s.repetitions),
+        weight: String(s.weight),
       })),
       observations: routine.observations || "",
     })
@@ -149,16 +100,15 @@ export function RoutinesClient({ initialRoutines }: RoutinesClientProps) {
 
   // Repeat Routine
   const handleRepeat = (routine: Routine) => {
-    setEditingRoutine(null) // Create new
-    form.reset({
+    setEditingId(undefined)
+    setFormData({
       name: routine.name,
       category: routine.category,
-      date: new Date().toISOString().split('T')[0],
-      sets: (routine.sets || []).map(s => ({
-          series: s.series,
-          repetitions: s.repetitions,
-          weight: s.weight || "",
-          rest: s.rest || "",
+      date: new Date(routine.date),
+      sets: routine.sets.map(s => ({
+        sets: String(s.sets),
+        repetitions: String(s.repetitions),
+        weight: String(s.weight),
       })),
       observations: routine.observations || "",
     })
@@ -167,38 +117,20 @@ export function RoutinesClient({ initialRoutines }: RoutinesClientProps) {
 
   // Delete Routine
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this routine?")) return
-    setIsLoading(true)
-    const { error } = await deleteRoutine(id)
-    setIsLoading(false)
-
-    if (error) {
-      toast.error(error)
-    } else {
-      toast.success("Routine deleted")
-    }
-  }
-
-  // Submit Form
-  async function onSubmit(values: RoutineFormValues) {
-    setIsLoading(true)
-    const res = editingRoutine 
-      ? await updateRoutine(editingRoutine.id, values)
-      : await createRoutine(values)
-    
-    setIsLoading(false)
-
-    if (res.error) {
-      toast.error(res.error)
-    } else {
-      toast.success(editingRoutine ? "Routine updated" : "Routine created")
-      handleOpenChange(false)
-    }
+    toast.promise(deleteRoutine(id), {
+      loading: 'Deleting routine...',
+      success: (data) => {
+         if (data.error) throw new Error(data.error)
+         router.refresh()
+         return 'Routine deleted'
+      },
+      error: (err) => err.message || 'Failed to delete routine'
+    })
   }
 
   // Group routines by date
   const groupedRoutines = initialRoutines.reduce((acc, routine) => {
-    const date = routine.date || "unknown";
+    const date = routine.date.toISOString().split('T')[0];
     if (!acc[date]) acc[date] = [];
     acc[date].push(routine);
     return acc;
@@ -215,8 +147,7 @@ export function RoutinesClient({ initialRoutines }: RoutinesClientProps) {
     if (dateStr === "unknown") return "No Date Set";
     try {
       const parsedDate = parseISO(dateStr);
-      if (isNaN(parsedDate.getTime())) return "Unknown Date";
-      return format(parsedDate, "EEEE, d MMMM yyyy");
+      return format(parsedDate, "EEEE, d 'of' MMMM");
     } catch {
       return "Unknown Date";
     }
@@ -237,175 +168,28 @@ export function RoutinesClient({ initialRoutines }: RoutinesClientProps) {
         </div>
         <Sheet open={isOpen} onOpenChange={handleOpenChange}>
           <SheetTrigger asChild>
-            <Button>
+            <Button onClick={() => { setEditingId(undefined); setFormData(undefined); }}>
               <Plus className="mr-2 h-4 w-4" /> Add Routine
             </Button>
           </SheetTrigger>
-          <SheetContent className="overflow-y-auto w-[400px] sm:w-[540px]">
-            <SheetHeader className="pb-6">
-              <SheetTitle>{editingRoutine ? "Edit Routine" : "Add Routine"}</SheetTitle>
+          <SheetContent className="overflow-y-auto w-[400px] sm:w-[540px] px-4 py-6">
+            <SheetHeader className="px-0">
+              <SheetTitle>{editingId ? "Edit Routine" : "Add Routine"}</SheetTitle>
               <SheetDescription>
-                {editingRoutine ? "Make changes to your routine here." : "Add a new exercise to your training plan."}
+                {editingId ? "Make changes to your routine here." : "Add a new exercise to your training plan."}
               </SheetDescription>
             </SheetHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10 pr-2">
-                <div className="space-y-6 border-b pb-8">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Exercise Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Bench Press" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="category"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Category</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Chest">Chest</SelectItem>
-                              <SelectItem value="Back">Back</SelectItem>
-                              <SelectItem value="Legs">Legs</SelectItem>
-                              <SelectItem value="Shoulders">Shoulders</SelectItem>
-                              <SelectItem value="Arms">Arms</SelectItem>
-                              <SelectItem value="Core">Core</SelectItem>
-                              <SelectItem value="Cardio">Cardio</SelectItem>
-                              <SelectItem value="Other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="date"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Date</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
+            
+            <RoutineForm 
+              // initialData={formData} 
+              routineId={editingId} 
+              onSuccess={handleSuccess} 
+            />
 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Sets</h3>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => append({ series: fields.length + 1, repetitions: 10, weight: "", rest: "" })}
-                    >
-                      <Plus className="mr-2 h-3 w-3" /> Add Set
-                    </Button>
-                  </div>
-                  
-                  {fields.map((field, index) => (
-                    <Card key={field.id} className="p-4 bg-muted/30">
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-xs font-bold uppercase">Set {index + 1}</span>
-                        {fields.length > 1 && (
-                          <Button 
-                            type="button" 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => remove(index)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name={`sets.${index}.repetitions`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-[10px] uppercase font-bold text-muted-foreground">Reps</FormLabel>
-                              <FormControl>
-                                <Input type="number" {...field} className="bg-background" onChange={e => field.onChange(parseInt(e.target.value))} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name={`sets.${index}.weight`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-[10px] uppercase font-bold text-muted-foreground">Weight</FormLabel>
-                              <FormControl>
-                                <Input placeholder="50kg" {...field} className="bg-background" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name={`sets.${index}.rest`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-[10px] uppercase font-bold text-muted-foreground">Rest</FormLabel>
-                              <FormControl>
-                                <Input placeholder="1m" {...field} className="bg-background" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="observations"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Observations</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Focus on form..." className="resize-none" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <SheetFooter className="pt-4">
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {editingRoutine ? "Update Routine" : "Create Routine"}
-                  </Button>
-                </SheetFooter>
-              </form>
-            </Form>
           </SheetContent>
         </Sheet>
       </div>
+
 
       <div className="space-y-10">
         {sortedDates.map((date) => (
@@ -462,26 +246,34 @@ export function RoutinesClient({ initialRoutines }: RoutinesClientProps) {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {(routine.sets || []).map((set, idx) => (
-                        <div key={idx} className="flex items-center justify-between text-sm py-1 border-b last:border-0 border-dashed border-muted">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-xs bg-primary/10 text-primary w-5 h-5 flex items-center justify-center rounded-full">{idx + 1}</span>
-                            <span className="text-muted-foreground">{set.repetitions} reps</span>
+                      {routine.sets.map((set, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-sm py-2 border-b last:border-0 border-border/50">
+                          <div className="flex items-center gap-3">
+                            <div className="flex flex-col items-center justify-center bg-primary/10 px-2 py-1 rounded min-w-12">
+                               <span className="text-lg font-bold text-primary leading-none">{set.sets || 1}</span>
+                               <span className="text-[10px] uppercase font-bold text-primary/60">SETS</span>
+                            </div>
+                            <div className="text-2xl text-muted-foreground/30 font-light">×</div>
+                            <div className="flex flex-col">
+                               <span className="font-medium text-base">{set.repetitions}</span>
+                               <span className="text-xs text-muted-foreground">reps</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-4 text-xs">
-                             {set.weight && (
-                                <div className="flex items-center gap-1">
-                                  <Weight className="h-3 w-3 text-muted-foreground" />
-                                  <span>{set.weight}</span>
-                                </div>
-                             )}
+                          
+                          <div className="flex items-center gap-1.5 bg-secondary/50 px-2.5 py-1 rounded-md">
+                            <Weight className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-sm font-medium">{set.weight ?? 0} <span className="text-muted-foreground text-xs">kg</span></span>
                           </div>
                         </div>
                       ))}
                     </div>
-                        <p className="mt-4 text-xs text-muted-foreground line-clamp-2 italic">
-                          &quot;{routine.observations}&quot;
-                        </p>
+                    {routine.observations && (
+                        <div className="mt-4 pt-3 border-t border-dashed">
+                            <p className="text-xs text-muted-foreground line-clamp-2 italic">
+                              &quot;{routine.observations}&quot;
+                            </p>
+                        </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}

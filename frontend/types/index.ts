@@ -14,33 +14,28 @@ export interface PaginatedResponse<T> {
 }
 
 export interface RoutineSet {
-  series: number;
+  sets: number;
   repetitions: number;
-  weight?: string;
-  rest?: string;
+  weight: number;
 }
+
 
 export interface Routine {
   id: string;
-  name: string;
   category: string;
-  date: string;
+  name: string;
+  description: string | null;
+  date: Date;
   sets: RoutineSet[];
   observations: string;
+  videoUrls: string[];
+  isTemplate: boolean;
+  userId: string;
+  programId: string | null;
+  originalRoutineId: string | null;
   createdAt: string;
   updatedAt: string;
 }
-
-export interface RoutineFormValues {
-  name: string;
-  category: string;
-  date: string;
-  sets: RoutineSet[];
-  observations: string;
-}
-
-export type CreateRoutineDto = RoutineFormValues;
-export type UpdateRoutineDto = Partial<CreateRoutineDto>;
 
 export interface User {
   id: string;

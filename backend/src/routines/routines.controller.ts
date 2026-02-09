@@ -1,36 +1,53 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { RoutinesService } from './routines.service';
 import { CreateRoutineDto } from './dto/create-routine.dto';
 import { UpdateRoutineDto } from './dto/update-routine.dto';
-import { AuthGuard } from '@nestjs/passport';
+import { Auth } from 'src/auth/decorators/auth.decorator';
+import { AuthUser } from 'src/auth/decorators/auth-user.decorator';
+import type { Payload } from 'src/interfaces';
 
+@Auth()
 @Controller('routines')
-@UseGuards(AuthGuard('jwt'))
 export class RoutinesController {
   constructor(private readonly routinesService: RoutinesService) {}
 
   @Post()
-  create(@Body() createRoutineDto: CreateRoutineDto, @Request() req: any) {
-    return this.routinesService.create(createRoutineDto, req.user);
+  create(
+    @Body() createRoutineDto: CreateRoutineDto,
+    @AuthUser() user: Payload,
+  ) {
+    return this.routinesService.create(createRoutineDto, user);
   }
 
   @Get()
-  findAll(@Request() req: any) {
-    return this.routinesService.findAll(req.user);
+  findAll(@AuthUser() user: Payload) {
+    return this.routinesService.findAll(user);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @Request() req: any) {
-    return this.routinesService.findOne(id, req.user);
+  findOne(@Param('id') id: string, @AuthUser() user: Payload) {
+    return this.routinesService.findOne(id, user);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateRoutineDto: UpdateRoutineDto, @Request() req: any) {
-    return this.routinesService.update(id, updateRoutineDto, req.user);
+  update(
+    @Param('id') id: string,
+    @Body() updateRoutineDto: UpdateRoutineDto,
+    @AuthUser() user: Payload,
+  ) {
+    return this.routinesService.update(id, updateRoutineDto, user);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @Request() req: any) {
-    return this.routinesService.remove(id, req.user);
+  remove(@Param('id') id: string, @AuthUser() user: Payload) {
+    return this.routinesService.remove(id, user);
   }
 }
